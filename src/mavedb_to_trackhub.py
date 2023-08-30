@@ -305,7 +305,7 @@ def main():
         os.makedirs(args.bed_dir)
     if not os.path.exists(args.location_matrix_dir):
         os.makedirs(args.location_matrix_dir)
-    with open(args.trackDb, "w") as trackdb_fp:
+    with open(args.trackDb, "w") as trackdb_fp: 
         write_header(args.track_name, trackdb_fp)
         for this_input_file in args.input_files:
             if args.debug:
