@@ -4,8 +4,9 @@ from cool_seq_tool.data_sources import AlignmentMapper, TranscriptMappings, \
     UTADatabase
 from cool_seq_tool.schemas import Assembly, ResidueMode
 from cool_seq_tool.data_sources import SeqRepoAccess
-from cool_seq_tool import TRANSCRIPT_MAPPINGS_PATH, LRG_REFSEQGENE_PATH, \
-    MANE_SUMMARY_PATH, UTA_DB_URL
+from cool_seq_tool.paths import TRANSCRIPT_MAPPINGS_PATH, LRG_REFSEQGENE_PATH, \
+    MANE_SUMMARY_PATH
+from cool_seq_tool.data_sources.uta_database import UTA_DB_URL
 
 from biocommons.seqrepo import SeqRepo
 
@@ -22,7 +23,7 @@ def alignment_mapper_setup():
     seqrepo_access = SeqRepoAccess(sr)
     db_url: str = UTA_DB_URL
     db_pwd: str = "uta"
-    uta_db = UTADatabase(db_url=db_url, db_pwd=db_pwd)
+    uta_db = UTADatabase(db_url=db_url)
     transcript_mappings=TranscriptMappings(TRANSCRIPT_MAPPINGS_PATH)
     alignment_mapper = AlignmentMapper(seqrepo_access, transcript_mappings,
                                        uta_db)
@@ -34,9 +35,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_json", nargs='*',
     			help="Input file(s), JSON format")
-    parser.add_argument("-n", "--track_name", default="MaveDB",
+    parser.add_argument("-n", "--track_name", default="Variant Effect Maps",
                         help="Name of the composite track")
-    parser.add_argument('-t', "--trackdb", default="trackDb.txt",
+    parser.add_argument('-t', "--trackDb", default="trackDb.txt",
                         help="Output trackDb file")
     parser.add_argument('-b', "--bed_dir", help="output bed directory")
     parser.add_argument('-l', "--location_matrix_dir",
@@ -127,7 +128,6 @@ async def old_map_to_genome(alignment_mapper, reference_type, reference_accessio
                         start_pos, end_pos):
     """
     Given a reference type and accession, and start and end positions on that
-    accessioned sequence, map the interval to the genome.  Return the chrom,
     genomic start and genomic end
     """
     assert(reference_type == "dna" or reference_type == "protein")
@@ -193,6 +193,7 @@ def create_bed(mave_json, score_set_name,
                                                      reference_type,
                                                      reference_accession,
                                                      mapped_score["post_mapped"])
+            print("working on", chrom_name, start_pos, end_pos, label)
             if not label in labels_in_bed:
                 this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
                 this_chrom = re.split("\.", this_chrom_versioned)[0]
@@ -304,7 +305,7 @@ def main():
         os.makedirs(args.bed_dir)
     if not os.path.exists(args.location_matrix_dir):
         os.makedirs(args.location_matrix_dir)
-    with open(args.trackdb, "w") as trackdb_fp:
+    with open(args.trackDb, "w") as trackdb_fp:
         write_header(args.track_name, trackdb_fp)
         for this_input_file in args.input_files:
             if args.debug:
