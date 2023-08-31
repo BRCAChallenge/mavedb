@@ -6,7 +6,7 @@
 
 This software relies on the [cool-seq-tool](https://pypi.org/project/cool-seq-tool/) python package to map protein to genomic coordinates.  The cool-seq-tool package in turn relies on the [Universal Transcript Archive (UTA)](https://github.com/biocommons/uta) database, the [SeqRepo](https://github.com/biocommons/biocommons.seqrepo) sequence mapping resource, and other resources.  See the installation instructions for [cool-seq-tool](https://pypi.org/project/cool-seq-tool/) for more information.
 
-This software also relies on the UCSC Genome Browser executables.
+This software also requires the UCSC Genome Browser executables `bedSort` and `bedToBigBed`.  These should be installed in your path prior to execution.
 
 ## Installation 
 
@@ -78,5 +78,6 @@ This software also relies on the UCSC Genome Browser executables.
 
 To Be Continued
 
-
+src/bigHeat.py  output/bed/00000098-a-1.bed output/lm/00000098-a-1.lm ../hg38.chrom.sizes output/bb 
+Processing output/lm/00000098-a-1.lm to output directory output/bb
 
