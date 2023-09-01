@@ -420,6 +420,29 @@ def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder
 
     makeTrackDb(bbFnames, sampleOrder, outDir, baseIn, (sumFunc is not None))
 
+def runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap="viridis", scale="none",
+               minVal=None, maxVal=None, mult=None, palRange=None, doLog=None, doOrder=None,
+               delSamples=None, bbDir=None, bigWig=None, sumFunc=None):
+    """
+    Execute runBigHeat programmatically
+    """
+    if cmap!="viridis":
+        from matplotlib import cm
+        import numpy as np
+        if palRange:
+            palStart, palEnd = palRange.split(":")
+            palStart = float(palStart)
+            palEnd = float(palEnd)
+        else:
+            palStart = 0.0
+            palEnd = 1.0
+        x = np.linspace(palStart, palEnd, binCount+1) # [0.0, 0.1, 0.2 ... 1.0]
+        pal = (cm.get_cmap(cmap)(x)*255)[:, 0:3].astype(int).tolist()
+
+    beds = parseBed(bedFname)
+    bigHeat(beds, matrixFname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc, outDir)
+    
+    
 # ----------- main --------------
 def main():
     global bbDir
@@ -444,20 +467,10 @@ def main():
     delSamples = options.delSamples
     sumFunc = options.bigWig
 
-    if cmap!="viridis":
-        from matplotlib import cm
-        import numpy as np
-        if palRange:
-            palStart, palEnd = palRange.split(":")
-            palStart = float(palStart)
-            palEnd = float(palEnd)
-        else:
-            palStart = 0.0
-            palEnd = 1.0
-        x = np.linspace(palStart, palEnd, binCount+1) # [0.0, 0.1, 0.2 ... 1.0]
-        pal = (cm.get_cmap(cmap)(x)*255)[:, 0:3].astype(int).tolist()
+    runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap=cmap, scale=scale,
+               minVal=minVal, maxVal=maxVal, mult=mult, palRange=palRange, doLog=doLog,
+               doOrder=doOrder, delSamples=delSamples, sumFunc=sumFunco)
 
-    beds = parseBed(bedFname)
-    bigHeat(beds, matrixFname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc, outDir)
+if __name__ == "__main__":
+    main()
 
-main()

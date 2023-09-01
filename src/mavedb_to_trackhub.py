@@ -18,6 +18,8 @@ import os
 import re
 import requests
 
+from bigHeat import runBigHeat
+
 def alignment_mapper_setup():
     sr = SeqRepo(root_dir=os.environ.get('SEQREPO_ROOT_DIR'))
     seqrepo_access = SeqRepoAccess(sr)
@@ -42,6 +44,8 @@ def parse_args():
     parser.add_argument('-b', "--bed_dir", help="output bed directory")
     parser.add_argument('-l', "--location_matrix_dir",
                         help="output location matrix directory")
+    parser.add_argument('-x', "--bigBed_dir", help="bigBed output directory")
+    parser.add_argument('-c', "--chrom_sizes", help="Pathname to the chrom sizes file")
     parser.add_argument('-d', "--debug", type=bool, default=True)
     args = parser.parse_args()
     input_files = []
@@ -180,8 +184,6 @@ def create_bed(mave_json, score_set_name,
     """
     bed_filename = "%s/%s.bed" % (bed_dir, score_set_name)
     with open(bed_filename, "w") as bed_fp:
-        #bed_fp.write("track type=bed name=\"%s\" description=\"%s\"\n" %
-        #             ( score_set_name, mave_json["title"]))
         reference_type = mave_json["mapped_reference_sequence"]["sequence_type"]
         reference_accession = mave_json["mapped_reference_sequence"]["sequence_id"]
         labels_in_bed = {}
@@ -199,6 +201,7 @@ def create_bed(mave_json, score_set_name,
                              % (this_chrom, start_pos, end_pos, label,
                                 start_pos, end_pos))
                 labels_in_bed[label] = 1
+    return(bed_filename)
 
         
 
@@ -252,8 +255,7 @@ def create_location_matrix(mave_json, score_set_name, location_matrix_dir):
     # for each alt at that locus
     (scores_per_label, min_score,
      max_score) = assemble_scores_per_label(mave_json, alts_scored)
-    location_matrix_filename = "%s/%s.lm" % (location_matrix_dir,
-                                             score_set_name)
+    location_matrix_filename = "%s/%s.lm" % (location_matrix_dir, score_set_name)
     with open(location_matrix_filename, "w") as lm_fp:
         #
         # Write out the unique alts
@@ -276,11 +278,11 @@ def create_location_matrix(mave_json, score_set_name, location_matrix_dir):
                 else:
                     lm_fp.write("\t%f" % this_score)
             lm_fp.write("\n")
-    return(min_score, max_score)
+    return(min_score, max_score, location_matrix_filename)
             
     
 def mave_to_track(mave_json, track_name, trackdb_fp, alignment_mapper,
-                  bed_dir, location_matrix_dir):
+                  bed_dir, location_matrix_dir, bigBed_dir, chrom_sizes):
     """
     Add WIG content to the output wig from the specified json object
     """
@@ -288,11 +290,14 @@ def mave_to_track(mave_json, track_name, trackdb_fp, alignment_mapper,
     # a colon-delimited URN.  This will be the name for instances where
     # reserved characters don't work well, such as filenames
     score_set_name = re.split(":", mave_json["target"]["scoreset"])[-1]
-    #add_trackdb_entry(mave_json, track_name, score_set_name, bedDir,
-    #                  trackdb_fp)
-    create_bed(mave_json, score_set_name, alignment_mapper, bed_dir)
-    (min_score,max_score) = create_location_matrix(mave_json, score_set_name,
-                                                   location_matrix_dir)
+    bed_file = create_bed(mave_json, score_set_name, alignment_mapper, bed_dir)
+    (min_score,max_score, location_matrix_file) = create_location_matrix(mave_json,
+                                                                         score_set_name,
+                                                                         location_matrix_dir)
+    my_bigBed_dir = "%s/%s" % (bigBed_dir, score_set_name)
+    if not os.path.exists(my_bigBed_dir):
+        os.makedirs(my_bigBed_dir)
+    runBigHeat(bed_file, location_matrix_file, chrom_sizes, my_bigBed_dir)
     return(min_score, max_score)
     
 
@@ -314,9 +319,10 @@ def main():
                                                        trackdb_fp,
                                                        alignment_mapper,
                                                        args.bed_dir,
-                                                       args.location_matrix_dir)
+                                                       args.location_matrix_dir,
+                                                       args.bigBed_dir, args.chrom_sizes)
     print(args.input_files, "score_range", min_score, max_score)
-
+    
 if __name__ == "__main__":
     main()
     
