@@ -42,8 +42,6 @@ def parse_args():
     parser.add_argument('-b', "--bed_dir", help="output bed directory")
     parser.add_argument('-l', "--location_matrix_dir",
                         help="output location matrix directory")
-    #parser.add_argument('-w', "--wig_dir", default="wig",
-    #                    help="Output wig file directory")
     parser.add_argument('-d', "--debug", type=bool, default=True)
     args = parser.parse_args()
     input_files = []

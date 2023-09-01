@@ -50,7 +50,7 @@ def parseArgs():
     parser.add_option("", "--del", dest="delSamples", action="append", help="Remove these sample. A regex. Can be specified multiple times. Useful to remove outliers.")
     parser.add_option("", "--cmap", dest="cmap", action="store", help="name of colormap. Requires matplotlib to be installed if set to something else than viridis.", default="viridis")
     parser.add_option("-b", "--bbDir", dest="bbDir", action="store", help="when writing trackDb, prefix all bigDataUrl filenames with this. Use this with the /gbdb directory.")
-    parser.add_option("", "--bw", dest="bigWig", action="store", help="Also create a bigWig that summarizes all values per nucleotide. Can be one of: 'sum', 'respFreq'")
+    parser.add_option("", "--bw", dest="bigWig", action="store", help="Also create a bigWig that summarizes all values per nucleotide. Can be one of: 'sum', 'respFreq'", default=None)
 
     parser.add_option("-d", "--debug", dest="debug", action="store_true", help="show debug messages")
     (options, args) = parser.parse_args()
@@ -92,7 +92,7 @@ def toBigBed(bedFnames, sampleOrder, chromSizes):
         os.remove(fname)
     return bbFnames
 
-def makeTrackDb(bbFnames, sampleOrder, outDir, parentName):
+def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, makeBigWig):
     " write a trackDb file to outDir "
     global bbDir
     tdbFn = join(outDir, "trackDb.ra")
@@ -127,20 +127,21 @@ def makeTrackDb(bbFnames, sampleOrder, outDir, parentName):
         tdbFh.write("    parent %s on\n" % parentName)
         tdbFh.write("\n")
 
-    if bbDir:
-        bwPath = join(bbDir, "allSum.bw")
-    else:
-        bwPath = bbFname
 
-    tdbFh.write("track %sAllSum\n" % parentName)
-    tdbFh.write("shortLabel %s Summary\n" % label)
-    tdbFh.write("longLabel %s Sum of all scores per nucleotide\n" % label)
-    tdbFh.write("type bigWig\n")
-    tdbFh.write("visibility full\n")
-    tdbFh.write("autoScale on\n")
-    tdbFh.write("maxHeightPixels 100:28:8\n")
-    tdbFh.write("bigDataUrl %s\n" % bwPath)
-    tdbFh.write("\n")
+    if makeBigWig:
+        if bbDir:
+            bwPath = join(bbDir, "allSum.bw")
+        else:
+            bwPath = bbFname
+        tdbFh.write("track %sAllSum\n" % parentName)
+        tdbFh.write("shortLabel %s Summary\n" % label)
+        tdbFh.write("longLabel %s Sum of all scores per nucleotide\n" % label)
+        tdbFh.write("type bigWig\n")
+        tdbFh.write("visibility full\n")
+        tdbFh.write("autoScale on\n")
+        tdbFh.write("maxHeightPixels 100:28:8\n")
+        tdbFh.write("bigDataUrl %s\n" % bwPath)
+        tdbFh.write("\n")
 
     tdbFh.close()
 
@@ -308,7 +309,8 @@ def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder
         elif sumFunc=="respFreq":
             sumVal = calcRespFreq(sampleNames, nums)
             assert(sumVal < 1.0)
-        nameVals[name].append(sumVal)
+        if sumFunc is not None:
+            nameVals[name].append(sumVal)
 
         # first take the log
         if doLog:
@@ -416,7 +418,7 @@ def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder
 
     bbFnames = toBigBed(bedFnames, sampleOrder, chromSizes)
 
-    makeTrackDb(bbFnames, sampleOrder, outDir, baseIn)
+    makeTrackDb(bbFnames, sampleOrder, outDir, baseIn, (sumFunc is not None))
 
 # ----------- main --------------
 def main():
@@ -429,6 +431,7 @@ def main():
     chromSizes = args[2]
     outDir = args[3]
 
+    print("options:", options)
     bbDir = options.bbDir
     scale = options.scale
     cmap  = options.cmap
