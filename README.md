@@ -35,29 +35,29 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
     4. Execute the command `pipenv shell`
       
     5. Set the following environment variables
-       
-        * `export UTA_VERSION=uta_20210129.pgd.gz`
-   
-        * `export UTA_PASSWORD=uta`
-      
-        * `export SEQREPO_ROOT_DIR=/usr/local/share/seqrepo/latest`
-      
-        * `export TRANSCRIPT_MAPPINGS_PATH=${PWD}/cool_seq_tool/data/transcript_mapping.tsv`
-      
-        * `export AWS_ACCESS_KEY_ID=fakeMyKeyId`
-      
-        * `export AWS_SECRET_ACCESS_KEY=fakeSecretAccessKey`
+       ```
+        export UTA_VERSION=uta_20210129.pgd.gz
+        export UTA_PASSWORD=uta
+        export SEQREPO_ROOT_DIR=/usr/local/share/seqrepo/latest
+        export TRANSCRIPT_MAPPINGS_PATH=${PWD}/cool_seq_tool/data/transcript_mapping.tsv
+        export AWS_ACCESS_KEY_ID=fakeMyKeyId
+        export AWS_SECRET_ACCESS_KEY=fakeSecretAccessKey
+       ```
       
   6. Navigate to the `src` directory under `mavedb`. 
     
   8. Execute with a command as follows:
 
-     ```src/mavedb_to_trackhub.py \
-            -i input/00000098-a-1.json \
+     ```
+     export PATH=../:${PATH}
+     mavedb_to_trackhub.py \
+            -i ../input/00000098-a-1.json \
             -n "Variant Effect Maps" \
-            -t trackDb.txt \
-            -b output/bed \
-            -l output/lm
+            -t ../trackDb.txt \
+            -b ../output/bed \
+            -l ../output/lm \
+            -x ../output/bb \
+            -c ../../hg38.chrom.sizes \
             -d 1
      ```
      
