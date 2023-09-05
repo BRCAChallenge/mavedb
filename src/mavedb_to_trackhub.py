@@ -41,10 +41,10 @@ def parse_args():
                         help="Name of the composite track")
     parser.add_argument('-t', "--trackDb", default="trackDb.txt",
                         help="Output trackDb file")
-    parser.add_argument('-b', "--bed_dir", help="output bed directory")
+    parser.add_argument('-c', "--bed_dir", help="output bed directory")
     parser.add_argument('-l', "--location_matrix_dir",
                         help="output location matrix directory")
-    parser.add_argument('-x', "--bigBed_dir", help="bigBed output directory")
+    parser.add_argument('-b', "--bigBed_dir", help="bigBed output directory")
     parser.add_argument('-c', "--chrom_sizes", help="Pathname to the chrom sizes file")
     parser.add_argument('-d', "--debug", type=bool, default=True)
     args = parser.parse_args()
@@ -54,9 +54,6 @@ def parse_args():
     args.input_files = input_files
     return(args)
 
-def print_wig_header(output_wig_fp):
-    output_wig_fp.write("track type=wiggle_0 name=\"mavedb\"",
-                        "description=\"MaveDB Scores\"")
 
 def write_header(track_name, trackdb_fp):
     trackdb_fp.write("track %s\n" % track_name)
@@ -115,14 +112,15 @@ def map_to_genome(alignment_mapper, reference_type, reference_accession,
                      % (reference_accession, start_pos, end_pos)
         response = requests.get(query_url)
         resp = response.json()
+        print("working on", reference_accession, start_pos, end_pos, "g_data", resp["g_data"])
+        chrom = None
+        genomic_start = None
+        genomic_end = None
         if "g_data" in resp:
-            chrom = resp["g_data"]["g_ac"]
-            genomic_start = resp["g_data"]["g_start_pos"]
-            genomic_end = resp["g_data"]["g_end_pos"]
-        else:
-            chrom = None
-            genomic_start = None
-            genomic_end = None
+            if resp["g_data"] is not None:
+                chrom = resp["g_data"]["g_ac"]
+                genomic_start = resp["g_data"]["g_start_pos"]
+                genomic_end = resp["g_data"]["g_end_pos"]
     return(chrom, genomic_start, genomic_end)
 
     
@@ -177,7 +175,7 @@ def add_location_to_bed(bed_fp, post_mapped_score, reference_type,
     
     
 def create_bed(mave_json, score_set_name,
-               alignment_mapper, bed_dir):
+               alignment_mapper, bed_dir, debug):
     """
     Create a bed file that shows the positions scored by genomic coordinates,
     plus a location matrix file that shows the intensity of the score
@@ -185,7 +183,12 @@ def create_bed(mave_json, score_set_name,
     bed_filename = "%s/%s.bed" % (bed_dir, score_set_name)
     with open(bed_filename, "w") as bed_fp:
         reference_type = mave_json["mapped_reference_sequence"]["sequence_type"]
-        reference_accession = mave_json["mapped_reference_sequence"]["sequence_id"]
+        if "sequence_accessions" in mave_json["mapped_reference_sequence"]:
+            reference_accession = mave_json["mapped_reference_sequence"]["sequence_accessions"][0]
+            assert(len(mave_json["mapped_reference_sequence"]["sequence_accessions"]) == 1)
+        else:
+            reference_accession = mave_json["mapped_reference_sequence"]["seque\
+nce_id"]
         labels_in_bed = {}
         for mapped_score in mave_json["mapped_scores"]:
             (chrom_name, start_pos,
@@ -193,14 +196,16 @@ def create_bed(mave_json, score_set_name,
                                                      reference_type,
                                                      reference_accession,
                                                      mapped_score["post_mapped"])
-            print("working on", chrom_name, start_pos, end_pos, label)
-            if not label in labels_in_bed:
-                this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
-                this_chrom = re.split("\.", this_chrom_versioned)[0]
-                bed_fp.write("%s\t%d\t%d\t%s\t0\t+\t%d\t%d\t0,0,0\n"
-                             % (this_chrom, start_pos, end_pos, label,
-                                start_pos, end_pos))
-                labels_in_bed[label] = 1
+            if debug:
+                print("working on", chrom_name, start_pos, end_pos, label)
+            if chrom_name is not None:
+                if not label in labels_in_bed:
+                    this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
+                    this_chrom = re.split("\.", this_chrom_versioned)[0]
+                    bed_fp.write("%s\t%d\t%d\t%s\t0\t+\t%d\t%d\t0,0,0\n"
+                                 % (this_chrom, start_pos, end_pos, label,
+                                    start_pos, end_pos))
+                    labels_in_bed[label] = 1
     return(bed_filename)
 
         
@@ -282,7 +287,8 @@ def create_location_matrix(mave_json, score_set_name, location_matrix_dir):
             
     
 def mave_to_track(mave_json, track_name, trackdb_fp, alignment_mapper,
-                  bed_dir, location_matrix_dir, bigBed_dir, chrom_sizes):
+                  bed_dir, location_matrix_dir, bigBed_dir, chrom_sizes,
+                  debug):
     """
     Add WIG content to the output wig from the specified json object
     """
@@ -290,7 +296,8 @@ def mave_to_track(mave_json, track_name, trackdb_fp, alignment_mapper,
     # a colon-delimited URN.  This will be the name for instances where
     # reserved characters don't work well, such as filenames
     score_set_name = re.split(":", mave_json["target"]["scoreset"])[-1]
-    bed_file = create_bed(mave_json, score_set_name, alignment_mapper, bed_dir)
+    bed_file = create_bed(mave_json, score_set_name, alignment_mapper,
+                          bed_dir, debug)
     (min_score,max_score, location_matrix_file) = create_location_matrix(mave_json,
                                                                          score_set_name,
                                                                          location_matrix_dir)
@@ -320,7 +327,9 @@ def main():
                                                        alignment_mapper,
                                                        args.bed_dir,
                                                        args.location_matrix_dir,
-                                                       args.bigBed_dir, args.chrom_sizes)
+                                                       args.bigBed_dir,
+                                                       args.chrom_sizes,
+                                                       args.debug)
     print(args.input_files, "score_range", min_score, max_score)
     
 if __name__ == "__main__":
