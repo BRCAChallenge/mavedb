@@ -64,9 +64,9 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
             -i ../input/00000098-a-1.json \
             -n "Variant Effect Maps" \
             -t ../trackDb.txt \
-            -b ../output/bed \
+            -c ../output/bed \
             -l ../output/lm \
-            -x ../output/bb \
+            -b ../output/bb \
             -c ../../hg38.chrom.sizes \
             -d 1
      ```
@@ -79,15 +79,13 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
      
         `--trackDb (-t)` specifies the pathname of the output trackDb file
      
-        `--bed_dir (-b)` specifies a subdirectory for the output bed files
+        `--bed_dir (-c)` specifies a subdirectory for the output bed files
      
         `--location_matrix_dir (-l)` specifies a subdirectory for the output location matrix files
+
+        `--bigBed_dir (-b)` specifies a subdirectory for the output bigBed files
      
         `--debug (-d)` turns on debugging information
 
 
-To Be Continued
-
-src/bigHeat.py  output/bed/00000098-a-1.bed output/lm/00000098-a-1.lm ../hg38.chrom.sizes output/bb 
-Processing output/lm/00000098-a-1.lm to output directory output/bb
-
+This code performs a two-step process.  First, it generates a bed file with the coordinates of the assay scores plus a location matrix file with the assay values.  Second, it calls bigHeat to generate a heatmap, represented as a set of bigBed files, one file per alternate residue (amino acid or nucleotide).  These bigBed files can then be viewed in the browser as track hubs.
