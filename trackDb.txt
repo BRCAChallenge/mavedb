@@ -1,3 +1,0 @@
-track Variant Effect Maps
-compositeTrack on
-
