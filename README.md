@@ -22,9 +22,19 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
 
 3. In a separate shell, launch the cool-seq-tool API service as follows:
    
-   1. Navigate to the cool_seq_tool source directory (which contains the file `api.py`)
+   1.Navigate to the cool-seq-tool directory, which contains the file `Pipfile`.  Execute the command
+   
+   ```
+   pipenv shell
+   ```
+   
+   2. Navigate to the cool_seq_tool source directory (which contains the file `api.py`)
   
-   2. Execute the command `uvicorn cool_seq_tool.api:app --reload`
+   3. Execute the command
+      
+   ```
+   uvicorn cool_seq_tool.api:app --reload
+   ```
    
 5. In a third shell:
 
