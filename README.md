@@ -18,9 +18,13 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
 
 1. Launch Postgresql
    
-2. In the *DynamoDBLocal_lib* directory, execute the command `java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`
+2. In the *DynamoDBLocal_lib* directory, execute the command
+   
+   ```
+   java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb
+   ```
 
-3. In a separate shell, launch the cool-seq-tool API service as follows:
+4. In a separate shell, launch the cool-seq-tool API service as follows:
    
    1.Navigate to the cool-seq-tool directory, which contains the file `Pipfile`.  Execute the command
    
@@ -60,14 +64,15 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
 
      ```
      export PATH=../:${PATH}
-     mavedb_to_trackhub.py \
-            -i ../input/00000098-a-1.json \
+     src/mavedb_to_trackhub.py \
+            -i input/00000098-a-1.json \
             -n "Variant Effect Maps" \
             -t ../trackDb.txt \
-            -c ../output/bed \
-            -l ../output/lm \
-            -b ../output/bb \
-            -c ../../hg38.chrom.sizes \
+            --bed_dir output/bed \
+            -c output/coordinates \
+            -l output/lm \
+            -b output/bigBed \
+            -s ../hg38.chrom.sizes \
             -d 1
      ```
      
@@ -79,11 +84,15 @@ This software also requires the UCSC Genome Browser executables `bedSort` and `b
      
         `--trackDb (-t)` specifies the pathname of the output trackDb file
      
-        `--bed_dir (-c)` specifies a subdirectory for the output bed files
+        `--bed_dir` specifies a subdirectory for the output bed files
+
+        `--coordinates (-c)` specifies an optional output file that maps the coordinates from the mavedb mappings to the reference genome
      
         `--location_matrix_dir (-l)` specifies a subdirectory for the output location matrix files
 
         `--bigBed_dir (-b)` specifies a subdirectory for the output bigBed files
+
+        `--chrom_sizes (-s)` specifies the chrom sizes file for the reference genome
      
         `--debug (-d)` turns on debugging information
 
