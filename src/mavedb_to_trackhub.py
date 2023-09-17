@@ -93,7 +93,7 @@ def map_to_genome(reference_type, reference_accession,
     assert(reference_type == "dna" or reference_type == "protein")
     if reference_type == "dna":
         genomic_start = start_pos
-        genonic_end = end_pos
+        genomic_end = end_pos
         chrom = reference_accession
     elif reference_type == "protein":
         query_url = ("http://127.0.0.1:8000/cool_seq_tool/alignment_mapper/p_to_g" +
