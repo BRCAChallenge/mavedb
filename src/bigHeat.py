@@ -88,6 +88,7 @@ def toBigBed(bedFnames, sampleOrder, chromSizes):
         cmd = ["bedSort", fname, fname]
         assert(subprocess.call(cmd)==0)
         cmd = ["bedToBigBed", fname, chromSizes, bbFname, "-tab"]
+        print("cmd is ", cmd)
         assert(subprocess.call(cmd)==0)
         os.remove(fname)
     return bbFnames

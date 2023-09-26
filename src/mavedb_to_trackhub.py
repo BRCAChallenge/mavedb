@@ -175,6 +175,10 @@ def create_bed(mave_json, score_set_name,
                 if not label in labels_in_bed:
                     this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
                     this_chrom = re.split("\.", this_chrom_versioned)[0]
+                    if this_chrom == "chr23":
+                        this_chrom = "chrX"
+                    elif this_chrom == "chr24":
+                        this_chrom = "chrY"
                     bed_fp.write("%s\t%d\t%d\t%s\t0\t+\t%d\t%d\t0,0,0\n"
                                  % (this_chrom, genomic_start, genomic_end, label,
                                     genomic_start, genomic_end))
@@ -210,17 +214,18 @@ def assemble_scores_per_label(mave_json, alts_scored):
     max_score = None
     for mapped_score in mave_json["mapped_scores"]:
         this_score = mapped_score["score"]
-        if min_score is None or this_score < min_score:
-            min_score = this_score
-        if max_score is None or this_score > max_score:
-            max_score = this_score
-        locus = mapped_score["post_mapped"]
-        locus_label = score_entry_to_label(locus)
-        if not locus_label in scores_per_label:
-            scores_per_label[locus_label] = [None] * len(alts_scored)
-        this_alt = mapped_score["post_mapped"]["variation"]["state"]["sequence"]
-        this_alt_index = alts_scored[this_alt]
-        scores_per_label[locus_label][this_alt_index] = this_score
+        if this_score is not None:
+            if min_score is None or this_score < min_score:
+                min_score = this_score
+            if max_score is None or this_score > max_score:
+                max_score = this_score
+            locus = mapped_score["post_mapped"]
+            locus_label = score_entry_to_label(locus)
+            if not locus_label in scores_per_label:
+                scores_per_label[locus_label] = [None] * len(alts_scored)
+            this_alt = mapped_score["post_mapped"]["variation"]["state"]["sequence"]
+            this_alt_index = alts_scored[this_alt]
+            scores_per_label[locus_label][this_alt_index] = this_score
     print("scores per label", scores_per_label)
     return(scores_per_label, min_score, max_score)
 
@@ -273,7 +278,7 @@ def mave_to_track(mave_json, track_name, trackdb_fp, coordinates_dir,
     # Extract the score set name from the URN.  This is the last token of
     # a colon-delimited URN.  This will be the name for instances where
     # reserved characters don't work well, such as filenames
-    score_set_name = re.split(":", mave_json["target"]["scoreset"])[-1]
+    score_set_name = re.split(":", mave_json["urn"])[-1]
     bed_file = create_bed(mave_json, score_set_name, 
                           bed_dir, coordinates_dir, debug)
     (min_score,max_score, location_matrix_file) = create_location_matrix(mave_json,
