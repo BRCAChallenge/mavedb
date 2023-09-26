@@ -157,37 +157,39 @@ def create_bed(mave_json, score_set_name,
             coordinates_fp = open(coordinates_filename, "w")
             coordinates_fp.write("Reference_type\tReference_Accession\tReference_Start\tReference_End" \
                                  + "\tChrom\tGehomic_Start\tGenomic_End\n")
-        reference_type = mave_json["mapped_reference_sequence"]["sequence_type"]
-        if "sequence_accessions" in mave_json["mapped_reference_sequence"]:
-            reference_accession = mave_json["mapped_reference_sequence"]["sequence_accessions"][0]
-            assert(len(mave_json["mapped_reference_sequence"]["sequence_accessions"]) == 1)
-        else:
-            reference_accession = mave_json["mapped_reference_sequence"]["sequence_id"]
-        labels_in_bed = {}
-        for mapped_score in mave_json["mapped_scores"]:
-            (chrom_name, genomic_start, genomic_end,
-             reference_start, reference_end, label)  = get_genomic_endpoints(reference_type,
-                                                                             reference_accession,
-                                                                             mapped_score["post_mapped"])
-            if debug:
-                print("working on", chrom_name, genomic_start, genomic_end, label)
-            if chrom_name is not None:
-                if not label in labels_in_bed:
-                    this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
-                    this_chrom = re.split("\.", this_chrom_versioned)[0]
-                    if this_chrom == "chr23":
-                        this_chrom = "chrX"
-                    elif this_chrom == "chr24":
-                        this_chrom = "chrY"
-                    bed_fp.write("%s\t%d\t%d\t%s\t0\t+\t%d\t%d\t0,0,0\n"
-                                 % (this_chrom, genomic_start, genomic_end, label,
-                                    genomic_start, genomic_end))
-                    if coordinates_dir is not None:
-                        coordinates_fp.write("%s\t%s\t%d\t%d\t%s\t%d\t%d\n" 
-                                             % (reference_type, reference_accession,
-                                                reference_start, reference_end,
-                                                this_chrom, genomic_start, genomic_end))
-                    labels_in_bed[label] = 1
+        if "mapped_reference_sequence" in mave_json:
+            if "sequence_type" in mave_json["mapped_reference_sequence"]:
+                reference_type = mave_json["mapped_reference_sequence"]["sequence_type"]
+                if "sequence_accessions" in mave_json["mapped_reference_sequence"]:
+                    reference_accession = mave_json["mapped_reference_sequence"]["sequence_accessions"][0]
+                    assert(len(mave_json["mapped_reference_sequence"]["sequence_accessions"]) == 1)
+                else:
+                    reference_accession = mave_json["mapped_reference_sequence"]["sequence_id"]
+                labels_in_bed = {}
+                for mapped_score in mave_json["mapped_scores"]:
+                    (chrom_name, genomic_start, genomic_end,
+                     reference_start, reference_end, label)  = get_genomic_endpoints(reference_type,
+                                                                                     reference_accession,
+                                                                                     mapped_score["post_mapped"])
+                    if debug:
+                        print("working on", chrom_name, genomic_start, genomic_end, label)
+                    if chrom_name is not None:
+                        if not label in labels_in_bed:
+                            this_chrom_versioned = re.sub("NC_(0)+", "chr", chrom_name)
+                            this_chrom = re.split("\.", this_chrom_versioned)[0]
+                            if this_chrom == "chr23":
+                                this_chrom = "chrX"
+                            elif this_chrom == "chr24":
+                                this_chrom = "chrY"
+                            bed_fp.write("%s\t%d\t%d\t%s\t0\t+\t%d\t%d\t0,0,0\n"
+                                         % (this_chrom, genomic_start, genomic_end, label,
+                                            genomic_start, genomic_end))
+                            if coordinates_dir is not None:
+                                coordinates_fp.write("%s\t%s\t%d\t%d\t%s\t%d\t%d\n" 
+                                                     % (reference_type, reference_accession,
+                                                        reference_start, reference_end,
+                                                        this_chrom, genomic_start, genomic_end))
+                            labels_in_bed[label] = 1
     return(bed_filename)
 
         
@@ -199,12 +201,13 @@ def gather_unique_alts(mave_json):
     """
     unique_alts = {}
     unique_alts_observed = 0
-    for mapped_score in mave_json["mapped_scores"]:
-        this_alt = mapped_score["post_mapped"]["variation"]["state"]
-        this_alt_seq = this_alt["sequence"]
-        if not this_alt_seq in unique_alts:
-            unique_alts[this_alt_seq] = unique_alts_observed
-            unique_alts_observed += 1
+    if "mapped_scores" in mave_json:
+        for mapped_score in mave_json["mapped_scores"]:
+            this_alt = mapped_score["post_mapped"]["variation"]["state"]
+            this_alt_seq = this_alt["sequence"]
+            if not this_alt_seq in unique_alts:
+                unique_alts[this_alt_seq] = unique_alts_observed
+                unique_alts_observed += 1
     return(unique_alts)
 
 
@@ -212,21 +215,22 @@ def assemble_scores_per_label(mave_json, alts_scored):
     scores_per_label = {}
     min_score = None
     max_score = None
-    for mapped_score in mave_json["mapped_scores"]:
-        this_score = mapped_score["score"]
-        if this_score is not None:
-            if min_score is None or this_score < min_score:
-                min_score = this_score
-            if max_score is None or this_score > max_score:
-                max_score = this_score
-            locus = mapped_score["post_mapped"]
-            locus_label = score_entry_to_label(locus)
-            if not locus_label in scores_per_label:
-                scores_per_label[locus_label] = [None] * len(alts_scored)
-            this_alt = mapped_score["post_mapped"]["variation"]["state"]["sequence"]
-            this_alt_index = alts_scored[this_alt]
-            scores_per_label[locus_label][this_alt_index] = this_score
-    print("scores per label", scores_per_label)
+    if "mapped_scores" in mave_json:
+        for mapped_score in mave_json["mapped_scores"]:
+            this_score = mapped_score["score"]
+            if this_score is not None:
+                if min_score is None or this_score < min_score:
+                    min_score = this_score
+                if max_score is None or this_score > max_score:
+                    max_score = this_score
+                locus = mapped_score["post_mapped"]
+                locus_label = score_entry_to_label(locus)
+                if not locus_label in scores_per_label:
+                    scores_per_label[locus_label] = [None] * len(alts_scored)
+                this_alt = mapped_score["post_mapped"]["variation"]["state"]["sequence"]
+                this_alt_index = alts_scored[this_alt]
+                scores_per_label[locus_label][this_alt_index] = this_score
+        print("scores per label", scores_per_label)
     return(scores_per_label, min_score, max_score)
 
                 
