@@ -1,0 +1,5 @@
+hub MaveDBDemonstrationHub
+shortLabel Variant Effect Maps
+longLabel Variant Effect Maps from MaveDB mapped to hg38
+genomesFile genomes.txt
+email  mcline@ucsc.edu

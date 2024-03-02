@@ -17,6 +17,7 @@ import json
 import os
 import re
 import requests
+import shutil
 
 from bigHeat import runBigHeat
 
@@ -27,13 +28,23 @@ def parse_args():
     			help="Input file(s), JSON format")
     parser.add_argument("-n", "--track_name", default="Variant Effect Maps",
                         help="Name of the composite track")
-    parser.add_argument('-t', "--trackDb", default="trackDb.txt",
+    parser.add_argument('-t', "--trackDb", default="hub/hg38/trackDb.txt",
                         help="Output trackDb file")
     parser.add_argument("--bed_dir", help="output bed directory")
     parser.add_argument('-c', "--coordinates_dir", default=None,
                         help="Optional output directory for coordinate mappings")
     parser.add_argument('-l', "--location_matrix_dir",
                         help="output location matrix directory")
+    parser.add_argument("--hub_dir", default="./hub",
+                        help="hub base directory")
+    parser.add_argument("--hub_file",
+                        default="src/browser_config_files/hub.txt",
+                        help="template hub.txt file")
+    parser.add_argument("--genomes_file",
+                        default="src/browser_config_files/genomes.txt",
+                        help="template genomes.txt file")
+    parser.add_argument("--genome_name", default="hg38",
+                        help="Genome name: must match genomes file")
     parser.add_argument('-b', "--bigBed_dir", help="bigBed output directory")
     parser.add_argument('-s', "--chrom_sizes", help="Pathname to the chrom sizes file")
     parser.add_argument('-d', "--debug", type=bool, default=True)
@@ -47,7 +58,9 @@ def parse_args():
 
 def write_header(track_name, trackdb_fp):
     trackdb_fp.write("track %s\n" % track_name)
-    trackdb_fp.write("compositeTrack on\n")
+    trackdb_fp.write("superTrack on\n")
+    trackdb_fp.write("shortLabel Variant Effects Map\n")
+    trackdb_fp.write("longLabel This track contains variant effect maps from the MaveDB repository\n")
     trackdb_fp.write("\n")
     
     
@@ -61,7 +74,7 @@ def add_trackdb_entry(mave_json, track_name, score_set_name, url_base,
     trackdb_fp.write("\tbigDataUrl %s/%s.bw\n" % (url_base, score_set_name))
     trackdb_fp.write("\tshortLabel %s\n" % mave_json["urn"])
     trackdb_fp.write("\tlongLabel %s\n" % mave_json["title"])
-    trackdb_fp.write("\ttype bigWig\n")
+    trackdb_fp.write("\ttype bigHeat\n")
     trackdb_fp.write("\tvisibility dense\n")
     trackdb_fp.write("\n")
 
@@ -102,7 +115,6 @@ def map_to_genome(reference_type, reference_accession,
                      % (reference_accession, start_pos, end_pos)
         response = requests.get(query_url)
         resp = response.json()
-        print("working on", reference_accession, start_pos, end_pos, "g_data", resp["g_data"])
         chrom = None
         genomic_start = None
         genomic_end = None
@@ -144,7 +156,7 @@ def add_location_to_bed(bed_fp, post_mapped_score, reference_type,
     
     
 def create_bed(mave_json, score_set_name,
-               bed_dir, coordinates_dir, debug):
+               bed_dir, coordinates_dir, debug=False):
     """
     Create a bed file that shows the positions scored by genomic coordinates,
     plus a location matrix file that shows the intensity of the score
@@ -301,12 +313,22 @@ def main():
         os.makedirs(args.bed_dir)
     if not os.path.exists(args.location_matrix_dir):
         os.makedirs(args.location_matrix_dir)
-    if not os.path.exists(args.bigBed_dir):
-        os.makedirs(args.bigBed_dir)
     if args.coordinates_dir is not None:
         if not os.path.exists(args.coordinates_dir):
             os.makedirs(args.coordinates_dir)
-    with open(args.trackDb, "w") as trackdb_fp: 
+    if not os.path.exists(args.hub_dir):
+        os.makedirs(args.hub_dir)
+    print("copying", args.hub_file, "to", args.hub_dir)
+    shutil.copy(args.hub_file, args.hub_dir)
+    shutil.copy(args.genomes_file, args.hub_dir)
+    genomes_dir = args.hub_dir + "/" + args.genome_name
+    if not os.path.exists(genomes_dir):
+        os.makedirs(genomes_dir)
+    bigBed_dir = genomes_dir +"/" + "bigBed"
+    if not os.path.exists(bigBed_dir):
+        os.makedirs(bigBed_dir)
+    trackdb_filename = genomes_dir + "/trackDb.txt"
+    with open(trackdb_filename, "w") as trackdb_fp: 
         write_header(args.track_name, trackdb_fp)
         for this_input_file in args.input_files:
             if args.debug:
@@ -318,7 +340,7 @@ def main():
                                                    args.coordinates_dir,
                                                    args.bed_dir,
                                                    args.location_matrix_dir,
-                                                   args.bigBed_dir,
+                                                   bigBed_dir,
                                                    args.chrom_sizes,
                                                    args.debug)
             if args.debug:
