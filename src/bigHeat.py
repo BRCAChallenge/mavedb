@@ -88,25 +88,25 @@ def toBigBed(bedFnames, sampleOrder, chromSizes):
         cmd = ["bedSort", fname, fname]
         assert(subprocess.call(cmd)==0)
         cmd = ["bedToBigBed", fname, chromSizes, bbFname, "-tab"]
-        print("cmd is ", cmd)
         assert(subprocess.call(cmd)==0)
         os.remove(fname)
     return bbFnames
 
-def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, makeBigWig):
+def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, longLabel, makeBigWig):
     " write a trackDb file to outDir "
-    global bbDir
+    #global bbDir
     tdbFn = join(outDir, "trackDb.ra")
     tdbFh = open(tdbFn, "w")
 
     label = parentName.replace("_", " ")
     tdbFh.write("track %s\n" % parentName)
     tdbFh.write("shortLabel %s\n" % label)
-    tdbFh.write("longLabel %s\n" % label)
+    tdbFh.write("longLabel %s\n" % longLabel)
     tdbFh.write("type bed 9\n")
     tdbFh.write("compositeTrack on\n")
     tdbFh.write("visibility dense\n")
     tdbFh.write("labelOnFeature on\n")
+    tdbFh.write("hideEmptySubtracks on\n")
     tdbFh.write("itemRgb on\n")
     tdbFh.write("\n")
 
@@ -115,10 +115,11 @@ def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, makeBigWig):
         trackName = splitext(basename(bbFname))[0]
         trackLabel = trackName.replace("_", " ")
         fullTrackName = parentName+"_"+trackName # avoid subtrack name clashes
-        if bbDir:
-            bbPath = join(bbDir, basename(bbFname))
-        else:
-            bbPath = bbFname
+        #
+        # When specifying the bigBed path in the trackDb file, we will want the path
+        # relative to the trackDb file itself.  Accordingly, strip off the first two
+        # directories in the pathname, which would be the hub and genome directories
+        bbPath = "/".join(re.split("/", bbFname)[3:])
         tdbFh.write("    track %s\n" % fullTrackName)
         tdbFh.write("    shortLabel %s\n" % trackLabel)
         tdbFh.write("    longLabel %s\n" % trackLabel)
@@ -231,7 +232,8 @@ def calcRespFreq(sampleNames, vals):
     assert(respFreq < 1.0)
     return respFreq
 
-def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc, outDir):
+def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc,
+            longLabel, outDir):
     " create bed files, convert them to bigBeds and make trackDb.ra in the directory "
     global bbDir
     global pal
@@ -419,11 +421,11 @@ def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder
 
     bbFnames = toBigBed(bedFnames, sampleOrder, chromSizes)
 
-    makeTrackDb(bbFnames, sampleOrder, outDir, baseIn, (sumFunc is not None))
+    makeTrackDb(bbFnames, sampleOrder, outDir, longLabel, baseIn, (sumFunc is not None))
 
 def runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap="viridis", scale="none",
                minVal=None, maxVal=None, mult=None, palRange=None, doLog=None, doOrder=None,
-               delSamples=None, bbDir=None, bigWig=None, sumFunc=None):
+               delSamples=None, bbDir=None, bigWig=None, sumFunc=None, longLabel=""):
     """
     Execute runBigHeat programmatically
     """
@@ -441,7 +443,8 @@ def runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap="viridis", scale=
         pal = (cm.get_cmap(cmap)(x)*255)[:, 0:3].astype(int).tolist()
 
     beds = parseBed(bedFname)
-    bigHeat(beds, matrixFname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc, outDir)
+    bigHeat(beds, matrixFname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc,
+            longLabel, outDir)
     
     
 # ----------- main --------------

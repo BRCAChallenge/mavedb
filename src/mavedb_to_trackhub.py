@@ -26,7 +26,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_json", nargs='*',
     			help="Input file(s), JSON format")
-    parser.add_argument("-n", "--track_name", default="Variant Effect Maps",
+    parser.add_argument("-n", "--track_name", default="Variant_Effect_Maps",
                         help="Name of the composite track")
     parser.add_argument('-t', "--trackDb", default="hub/hg38/trackDb.txt",
                         help="Output trackDb file")
@@ -47,7 +47,7 @@ def parse_args():
                         help="Genome name: must match genomes file")
     parser.add_argument('-b', "--bigBed_dir", help="bigBed output directory")
     parser.add_argument('-s', "--chrom_sizes", help="Pathname to the chrom sizes file")
-    parser.add_argument('-d', "--debug", type=bool, default=True)
+    parser.add_argument('-d', "--debug", type=bool, default=False)
     args = parser.parse_args()
     input_files = []
     for arg in args.input_json:
@@ -59,7 +59,7 @@ def parse_args():
 def write_header(track_name, trackdb_fp):
     trackdb_fp.write("track %s\n" % track_name)
     trackdb_fp.write("superTrack on\n")
-    trackdb_fp.write("shortLabel Variant Effects Map\n")
+    trackdb_fp.write("shortLabel Variant_Effect_Maps\n")
     trackdb_fp.write("longLabel This track contains variant effect maps from the MaveDB repository\n")
     trackdb_fp.write("\n")
     
@@ -76,6 +76,7 @@ def add_trackdb_entry(mave_json, track_name, score_set_name, url_base,
     trackdb_fp.write("\tlongLabel %s\n" % mave_json["title"])
     trackdb_fp.write("\ttype bigHeat\n")
     trackdb_fp.write("\tvisibility dense\n")
+    trackdb_fp.write("\thideEmptySubtracks on\n")
     trackdb_fp.write("\n")
 
 
@@ -288,23 +289,23 @@ def create_location_matrix(mave_json, score_set_name, location_matrix_dir):
 def mave_to_track(mave_json, track_name, trackdb_fp, coordinates_dir,
                   bed_dir, location_matrix_dir, bigBed_dir, chrom_sizes,
                   debug):
-    """
-    Add WIG content to the output wig from the specified json object
-    """
     # Extract the score set name from the URN.  This is the last token of
     # a colon-delimited URN.  This will be the name for instances where
     # reserved characters don't work well, such as filenames
     score_set_name = re.split(":", mave_json["urn"])[-1]
+    longLabel = mave_json["title"]
     bed_file = create_bed(mave_json, score_set_name, 
                           bed_dir, coordinates_dir, debug)
-    (min_score,max_score, location_matrix_file) = create_location_matrix(mave_json,
-                                                                         score_set_name,
-                                                                         location_matrix_dir)
+    (min_score,max_score,
+     location_matrix_file) = create_location_matrix(mave_json,
+                                                    score_set_name,
+                                                    location_matrix_dir)
     my_bigBed_dir = "%s/%s" % (bigBed_dir, score_set_name)
     if not os.path.exists(my_bigBed_dir):
         os.makedirs(my_bigBed_dir)
-    runBigHeat(bed_file, location_matrix_file, chrom_sizes, my_bigBed_dir)
-    return(min_score, max_score)
+    runBigHeat(bed_file, location_matrix_file, chrom_sizes, my_bigBed_dir,
+               longLabel="")
+    return(my_bigBed_dir)
     
 
 def main():
@@ -334,18 +335,31 @@ def main():
             if args.debug:
                 print("Working on input file", this_input_file)
             mave_json = json.load(open(this_input_file))
-            (min_score, max_score) = mave_to_track(mave_json,
-                                                   args.track_name,
-                                                   trackdb_fp,
-                                                   args.coordinates_dir,
-                                                   args.bed_dir,
-                                                   args.location_matrix_dir,
-                                                   bigBed_dir,
-                                                   args.chrom_sizes,
-                                                   args.debug)
-            if args.debug:
-                print(this_input_file, "score_range", min_score, max_score)
-    
+            (this_bigBed_dir) = mave_to_track(mave_json,
+                                              args.track_name,
+                                              trackdb_fp,
+                                              args.coordinates_dir,
+                                              args.bed_dir,
+                                              args.location_matrix_dir,
+                                              bigBed_dir,
+                                              args.chrom_sizes,
+                                              args.debug)
+            #
+            # If bigBed files were generated successfully, then include this
+            # experiment's trackDb file into the larger trackDb.  Else, remove
+            # this bigBed directory.
+            if (len(glob(this_bigBed_dir + "/*bb")) > 0):
+                relative_bigBed_dir = re.sub(genomes_dir, "",
+                                              this_bigBed_dir)
+                trackdb_fp.write("include .%s/trackDb.ra\n"
+                                 % (relative_bigBed_dir))
+                if args.debug:
+                    print("including score set", this_bigBed_dir)
+            else:
+                os.rmdir(this_bigBed_dir)
+                if args.debug:
+                    print("omitting score_set", this_bigBed_dir)
+
 if __name__ == "__main__":
     main()
     
