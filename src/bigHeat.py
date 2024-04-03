@@ -3,6 +3,7 @@
 import logging, sys, optparse, subprocess, os, math, re
 from collections import defaultdict
 from os.path import *
+import re
 
 # made with: import cm from matplotlib; (cm.get_cmap("viridis")(x)*255)[:, 0:3].astype(int).tolist()
 viridisPal = [[68, 1, 84], [71, 18, 101], [72, 35, 116], [69, 52, 127], [64, 67, 135], [58, 82, 139], [52, 94, 141], [46, 107, 142], [41, 120, 142], [36, 132, 141], [32, 144, 140], [30, 155, 137], [34, 167, 132], [47, 179, 123], [68, 190, 112], [94, 201, 97], [121, 209, 81], [154, 216, 60], [189, 222, 38], [223, 227, 24], [253, 231, 36]]
@@ -99,12 +100,12 @@ def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, longLabel, makeBigWig
     tdbFh = open(tdbFn, "w")
 
     label = parentName.replace("_", " ")
-    tdbFh.write("track %s\n" % parentName)
+    tdbFh.write("track %s\n" % re.sub('\s', "_", parentName))
     tdbFh.write("shortLabel %s\n" % label)
     tdbFh.write("longLabel %s\n" % longLabel)
     tdbFh.write("type bed 9\n")
     tdbFh.write("compositeTrack on\n")
-    tdbFh.write("visibility dense\n")
+    tdbFh.write("visibility hide\n")
     tdbFh.write("labelOnFeature on\n")
     tdbFh.write("hideEmptySubtracks on\n")
     tdbFh.write("itemRgb on\n")
@@ -120,7 +121,7 @@ def makeTrackDb(bbFnames, sampleOrder, outDir, parentName, longLabel, makeBigWig
         # relative to the trackDb file itself.  Accordingly, strip off the first two
         # directories in the pathname, which would be the hub and genome directories
         bbPath = "/".join(re.split("/", bbFname)[3:])
-        tdbFh.write("    track %s\n" % fullTrackName)
+        tdbFh.write("    track %s\n" % re.sub(" ", "_", fullTrackName))
         tdbFh.write("    shortLabel %s\n" % trackLabel)
         tdbFh.write("    longLabel %s\n" % trackLabel)
         tdbFh.write("    type bigBed 9\n")
@@ -233,7 +234,7 @@ def calcRespFreq(sampleNames, vals):
     return respFreq
 
 def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc,
-            longLabel, outDir):
+            shortLabel, longLabel, outDir):
     " create bed files, convert them to bigBeds and make trackDb.ra in the directory "
     global bbDir
     global pal
@@ -421,11 +422,11 @@ def bigHeat(beds, fname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder
 
     bbFnames = toBigBed(bedFnames, sampleOrder, chromSizes)
 
-    makeTrackDb(bbFnames, sampleOrder, outDir, longLabel, baseIn, (sumFunc is not None))
+    makeTrackDb(bbFnames, sampleOrder, outDir, shortLabel, longLabel, (sumFunc is not None))
 
 def runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap="viridis", scale="none",
                minVal=None, maxVal=None, mult=None, palRange=None, doLog=None, doOrder=None,
-               delSamples=None, bbDir=None, bigWig=None, sumFunc=None, longLabel=""):
+               delSamples=None, bbDir=None, bigWig=None, sumFunc=None, shortLabel="", longLabel=""):
     """
     Execute runBigHeat programmatically
     """
@@ -444,7 +445,7 @@ def runBigHeat(bedFname, matrixFname, chromSizes, outDir, cmap="viridis", scale=
 
     beds = parseBed(bedFname)
     bigHeat(beds, matrixFname, chromSizes, scale, minVal, maxVal, mult, doLog, doOrder, delSamples, sumFunc,
-            longLabel, outDir)
+            shortLabel, longLabel, outDir)
     
     
 # ----------- main --------------

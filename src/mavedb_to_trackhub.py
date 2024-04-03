@@ -40,6 +40,8 @@ def parse_args():
     parser.add_argument("--hub_file",
                         default="src/browser_config_files/hub.txt",
                         help="template hub.txt file")
+    parser.add_argument("--html", default="src/browser_config_files/description.html",
+                        help="Template HTML description file")
     parser.add_argument("--genomes_file",
                         default="src/browser_config_files/genomes.txt",
                         help="template genomes.txt file")
@@ -56,30 +58,19 @@ def parse_args():
     return(args)
 
 
-def write_header(track_name, trackdb_fp):
-    trackdb_fp.write("track %s\n" % track_name)
+def write_trackDb(track_name, trackdb_fp, html_description_filename):
+    trackdb_fp.write("track %s\n" % re.sub('\s', "_", track_name))
     trackdb_fp.write("superTrack on\n")
     trackdb_fp.write("shortLabel Variant_Effect_Maps\n")
     trackdb_fp.write("longLabel This track contains variant effect maps from the MaveDB repository\n")
+    trackdb_fp.write("html %s\n" % html_description_filename)
     trackdb_fp.write("\n")
     
-    
-def add_trackdb_entry(mave_json, track_name, score_set_name, url_base,
-                      trackdb_fp):
-    """
-    Make an entry for this MAVE experiment in trackDb
-    """
-    trackdb_fp.write("\ttrack %s\n" % score_set_name)
-    trackdb_fp.write("\tparent %s on\n" % track_name)
-    trackdb_fp.write("\tbigDataUrl %s/%s.bw\n" % (url_base, score_set_name))
-    trackdb_fp.write("\tshortLabel %s\n" % mave_json["urn"])
-    trackdb_fp.write("\tlongLabel %s\n" % mave_json["title"])
-    trackdb_fp.write("\ttype bigHeat\n")
-    trackdb_fp.write("\tvisibility dense\n")
-    trackdb_fp.write("\thideEmptySubtracks on\n")
-    trackdb_fp.write("\n")
+def append_to_file(pathname, directive, argument):
+    with open(pathname, 'a') as fp:
+        fp.write("%s %s\n" % (directive, argument))
 
-
+        
 def get_endpoints(mapped_score):
     """
     Given a mapped score, return its start and end endpoints
@@ -146,13 +137,6 @@ def get_genomic_endpoints(reference_type, reference_accession,
     return(chrom, genomic_start, genomic_end, ref_start, ref_end, label)
 
 
-    
-def add_location_to_bed(bed_fp, post_mapped_score, reference_type,
-                        reference_accession, alignment_mapper):
-    """
-    Given a mapped position, add it to the bed file, after translating the
-    coordinates to genomic coordinates
-    """
 
     
     
@@ -293,6 +277,8 @@ def mave_to_track(mave_json, track_name, trackdb_fp, coordinates_dir,
     # a colon-delimited URN.  This will be the name for instances where
     # reserved characters don't work well, such as filenames
     score_set_name = re.split(":", mave_json["urn"])[-1]
+    gene_name = re.split("\s", mave_json["targetGene"]["name"])[0]
+    shortLabel = gene_name + "_" + score_set_name
     longLabel = mave_json["title"]
     bed_file = create_bed(mave_json, score_set_name, 
                           bed_dir, coordinates_dir, debug)
@@ -304,9 +290,11 @@ def mave_to_track(mave_json, track_name, trackdb_fp, coordinates_dir,
     if not os.path.exists(my_bigBed_dir):
         os.makedirs(my_bigBed_dir)
     runBigHeat(bed_file, location_matrix_file, chrom_sizes, my_bigBed_dir,
-               longLabel="")
+               shortLabel=shortLabel, longLabel=longLabel)
     return(my_bigBed_dir)
     
+def filename_from_pathname(pathname):
+    return(re.split("[/]", pathname)[-1])
 
 def main():
     args = parse_args()
@@ -319,18 +307,24 @@ def main():
             os.makedirs(args.coordinates_dir)
     if not os.path.exists(args.hub_dir):
         os.makedirs(args.hub_dir)
-    print("copying", args.hub_file, "to", args.hub_dir)
     shutil.copy(args.hub_file, args.hub_dir)
     shutil.copy(args.genomes_file, args.hub_dir)
+    shutil.copy(args.html, args.hub_dir)
+    append_to_file(args.hub_dir + "/" + filename_from_pathname(args.hub_file),
+                   "description", filename_from_pathname(args.html))
     genomes_dir = args.hub_dir + "/" + args.genome_name
     if not os.path.exists(genomes_dir):
         os.makedirs(genomes_dir)
+    shutil.copy(args.html, genomes_dir)
     bigBed_dir = genomes_dir +"/" + "bigBed"
     if not os.path.exists(bigBed_dir):
         os.makedirs(bigBed_dir)
     trackdb_filename = genomes_dir + "/trackDb.txt"
-    with open(trackdb_filename, "w") as trackdb_fp: 
-        write_header(args.track_name, trackdb_fp)
+    with open(trackdb_filename, "w") as trackdb_fp:
+        #
+        # When writing the trackDb file, extract the filename from the pathname, reflecting
+        # that the file has been copied to the directory with 
+        write_trackDb(args.track_name, trackdb_fp, re.split("[/]", args.html)[-1])
         for this_input_file in args.input_files:
             if args.debug:
                 print("Working on input file", this_input_file)
