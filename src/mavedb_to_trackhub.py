@@ -63,7 +63,7 @@ def write_trackDb(track_name, trackdb_fp, html_description_filename):
     trackdb_fp.write("superTrack on\n")
     trackdb_fp.write("shortLabel Variant_Effect_Maps\n")
     trackdb_fp.write("longLabel This track contains variant effect maps from the MaveDB repository\n")
-    trackdb_fp.write("html %s\n" % html_description_filename)
+    trackdb_fp.write("descriptionUrl %s\n" % html_description_filename)
     trackdb_fp.write("\n")
     
 def append_to_file(pathname, directive, argument):
